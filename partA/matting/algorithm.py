@@ -147,7 +147,9 @@ class Matting:
         #########################################
         ## PLACE YOUR CODE BETWEEN THESE LINES ##
         #########################################
-
+        if (self._images[key] is not None):
+            imsave(fileName, self._images[key])
+            success = True
 
         #########################################
         return success, msg
