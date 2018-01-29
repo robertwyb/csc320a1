@@ -126,10 +126,15 @@ class Matting:
         #########################################
         ## PLACE YOUR CODE BETWEEN THESE LINES ##
         #########################################
-        self._images[key] = imread(fileName)/255.0
-        if (self._images[key] is not None):
-            success = True
-            return success
+        image = cv.imread(fileName)
+        image = image.astype(np.float64)
+        self._images[key] = image
+
+        #if (self._images[key] is not None):
+        #    success = True
+        #    return success
+        success = True
+
         #########################################
         return success, msg
 
@@ -148,9 +153,10 @@ class Matting:
         ## PLACE YOUR CODE BETWEEN THESE LINES ##
         #########################################
         if (self._images[key] is not None):
-            imsave(fileName, self._images[key])
-            success = True
-            return success
+            cv.imwrite(fileName, self._images[key])
+        #    success = True
+        #    return success
+        success = True
         #########################################
         return success, msg
 
@@ -173,31 +179,28 @@ success, errorMessage = triangulationMatting(self)
         ## PLACE YOUR CODE BETWEEN THESE LINES ##
         #########################################
         
-        img_size = self._images[compA].shape
-        for_red = np.zeros((img_size[0], img_size[1]))
-        for_blue = np.zeros((img_size[0], img_size[1]))
-        for_green = np.zeros((img_size[0], img_size[1]))
-        alpha = np.zeros((img_size[0], img_size[1]))
+        img_size = self._images['compA'].shape
+        #for_red = np.zeros((img_size[0], img_size[1]))
+        #for_blue = np.zeros((img_size[0], img_size[1]))
+        #for_green = np.zeros((img_size[0], img_size[1]))
+        #b1r = np.zeros
+        for_c = np.zeros(img_size[:])
+        alpha = np.zeros(img_size[:2])
 
         # get four images info
-        b1 = self._images[backA]
-        b2 = self._images[backB]
-        c1 = self._images[compA]
-        c2 = self._images[compB]
+        b1 = self._images['backA']
+        b2 = self._images['backB']
+        c1 = self._images['compA']
+        c2 = self._images['compB']
+        """
+        b1r = b1g = b1b = np.zeros(img_size[:2])
+        b2r = b2g = b2b = np.zeros(img_size[:2])
+        c1r = c1g = c1b = np.zeros(img_size[:2])
+        c2r = c2g = c2b = np.zeros(img_size[:2])
+        """
 
         # get matrix with selected color
-        b1r = b1[:,:,0]
-        b1g = b1[:,:,1]
-        b1b = b1[:,:,2]
-        b2r = b2[:,:,0]
-        b2g = b2[:,:,1]
-        b2b = b2[:,:,2]
-        c1r = c1[:,:,0]
-        c1g = c1[:,:,1]
-        c1b = c1[:,:,2]
-        c2r = c2[:,:,0]
-        c2g = c2[:,:,1]
-        c2b = c2[:,:,2]
+
 
         matrix = np.array([
             [1, 0, 0],
@@ -211,33 +214,40 @@ success, errorMessage = triangulationMatting(self)
         # http://cs.brown.edu/courses/cs129/results/final/njooma/
         for i in range(img_size[0]):
             for j in range(img_size[1]):
+
                 c_delta = np.array([
-                    [c1_r[i, j] - b1_r[i, j]],
-                    [c1_g[i, j] - b1_g[i, j]],
-                    [c1_b[i, j] - b1_b[i, j]],
-                    [c2_r[i, j] - b2_r[i, j]],
-                    [c2_g[i, j] - b2_g[i, j]],
-                    [c2_b[i, j] - b2_b[i, j]]])
-                calc = np.hstack((matrix, a * -1))
+                    [c1[i][j][2] - b1[i][j][2]],
+                    [c1[i][j][1] - b1[i][j][1]],
+                    [c1[i][j][0] - b1[i][j][0]],
+                    [c2[i][j][2] - b2[i][j][2]],
+                    [c2[i][j][1] - b2[i][j][1]],
+                    [c2[i][j][0] - b2[i][j][0]]
+                ])
                 bgi = np.array([
-                    [b1_r[i, j]],
-                    [b1_g[i, j]],
-                    [b1_b[i, j]],
-                    [b2_r[i, j]],
-                    [b2_g[i, j]],
-                    [b2_b[i, j]]])
-                result = np.dot(sp.pinv(calc), bgi)
-                for_red[i, j] = result[0][0]
-                for_green[i, j] = result[1][0]
-                for_blue[i, j] = result[2][0]
-                for_c[i, j] = np.array([for_red[i, j], for_green[i, j], for_blue[i, j]])
+                    [b1[i][j][2]],
+                    [b1[i][j][1]],
+                    [b1[i][j][0]],
+                    [b2[i][j][2]],
+                    [b2[i][j][1]],
+                    [b2[i][j][0]]
+                ])
+                calc = np.hstack((matrix, bgi * -1))
+                result = np.matmul(np.linalg.pinv(calc), c_delta)
+
+
+                #for_red[i, j] = result[0][0]
+                #for_green[i, j] = result[1][0]
+                #for_blue[i, j] = result[2][0]
+                #for_c[i, j] = np.array([for_red[i, j], for_green[i, j], for_blue[i, j]])
+                for_c[i, j] = np.array([result[2][0], result[1][0], result[0][0]])
                 alpha[i, j] = result[3]
-        self._images[colOut] = for_c
-        self._images[alphaOut] = alpha
-        if (self._images[colOut] is not None and self._images[alphaOut] is not None):
-            success = True
-            return success
-             
+        self._images['colOut'] = for_c
+        self._images['alphaOut'] = alpha*255
+        print alpha
+        #if (self._images['colOut'] is not None and self._images['alphaOut'] is not None):
+        #    success = True
+        #    return success
+        success = True     
 
         #########################################
 
@@ -246,12 +256,12 @@ success, errorMessage = triangulationMatting(self)
         
     def createComposite(self):
         """
-success, errorMessage = createComposite(self)
+        success, errorMessage = createComposite(self)
         
         Perform compositing. Returns True if successful (ie.
         all inputs and outputs are valid) and False if not. When success=False
         an explanatory error message should be returned.
-"""
+        """
 
         success = False
         msg = 'fail to composite'
@@ -259,7 +269,22 @@ success, errorMessage = createComposite(self)
         #########################################
         ## PLACE YOUR CODE BETWEEN THESE LINES ##
         #########################################
-
+        #img_size = self._images['backIn'].shape()
+        t_alpha = self._images['alphaIn']/255
+        t_col = self._images['colIn']
+        t_comp = np.zeros(t_col.shape[:])
+        
+        for i in range(t_col.shape[0]):
+            for j in range(t_col.shape[1]):
+                colIn = t_col[i, j]
+                alphaIn = t_alpha[i, j]
+                backIn = self._images['backIn'][i, j]
+                t_comp[i, j] = colIn + (1 - alphaIn) * backIn
+        self._images['compOut'] = t_comp
+        #if self._images['compOut'] is not None:
+        #    success = True
+        #    return success
+        success = True
         #########################################
 
         return success, msg
